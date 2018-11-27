@@ -17,7 +17,7 @@ module lcd_top
 	//global clock
 	input				rst_n,     		//sync reset
 	input				clk,			//system clock
-	input 				axis_if_clk,	//140M时钟输入
+//	input 				axis_if_clk,	//140M时钟输入
 	input 				lcd_if_clk,		//9M时钟输入
 	//axi stream interface 
 	input 				axis_aresetn,		// input wire s00_axis_aresetn
@@ -40,6 +40,8 @@ module lcd_top
 	  
 	//signal
 //--------------------------------------------------------------------------//	
+	wire 				lcd_if_clk;
+
 	wire 				axis_data_en;			//output axi stream 数据输出使能
 	wire 				axis_data_sync;        	//output axi stream 数据同步
 	wire 				axis_data_requst;      	//input axi stream  数据请求
@@ -68,15 +70,16 @@ axis_if u_axis_if(
 //-------------------------------------//
 //	fifo control                	   //
 //-------------------------------------//
-wire 					fifo_rd_en;
-wire 					fifo_empty;
-wire 		[9 : 0]		fifo_rd_cnt;
-
-wire					fifo_wr_en;
-wire 					fifo_full;
-wire 		[9 : 0]		wr_data_count;
-
-wire 					lcd_data_requst;
+wire 						fifo_rd_en;
+wire 						fifo_empty;
+wire 		[9 : 0]			fifo_rd_cnt;
+	
+wire						fifo_wr_en;
+wire 						fifo_full;
+wire 		[9 : 0]			wr_data_count;
+	
+wire 						lcd_data_requst;	//lcd 读请求
+wire 						lcd_framesync;		//lcd 帧同步
 
 fifo_ctl u_fifo_ctl#(
 	.FIFO_DEPTH(1024),
@@ -97,7 +100,7 @@ fifo_ctl u_fifo_ctl#(
 	fifo_empty(fifo_empty),					//input		fifo空指示	
 	fifo_rd_cnt(fifo_rd_cnt),				//input 	fifo读计数器
 		//write
-	fifo_wr_clk(axis_if_clk),				//input		fifo写时钟
+	fifo_wr_clk(axis_aclk),					//input		fifo写时钟
 	fifo_wr_en(fifo_wr_en),					//output	fifo写使能
 	fifo_full(fifo_full),					//input		fifo满指示
 	fifo_wr_cnt(wr_data_count),				//input		fifo写计数器
@@ -109,36 +112,36 @@ fifo_ctl u_fifo_ctl#(
 //-------------------------------------//
 //	fifo                			   //
 //-------------------------------------//
-assign  fifo_wr_din = axis_tdata;
+wire 		[31:0]			fifo_wr_din;
+wire 		[31:0]			fifo_rd_dout;
+
+assign fifo_wr_din = (fifo_wr_en)?axis_tdata:32'd0;
 
 fifo_gen u_fifo_gen (
 	//system
-	.rst(rst),                      // input wire rst
+	.rst(!rst_n),                      	// input wire rst
 	//write
-	.wr_clk(wr_clk),                // input wire wr_clk
-	.wr_en(fifo_wr_en),                  // input wire wr_en
-	.din(fifo_wr_din),                      // input wire [31 : 0] din
-	.full(fifo_full),                    // output wire full
-	.wr_data_count(wr_data_count)  // output wire [9 : 0] wr_data_count
+	.wr_clk(axis_aclk),                	// input wire wr_clk
+	.wr_en(fifo_wr_en),                 // input wire wr_en
+	.din(fifo_wr_din),                  // input wire [31 : 0] din
+	.full(fifo_full),                   // output wire full
+	.wr_data_count(wr_data_count)  		// output wire [9 : 0] wr_data_count
 	//read
-	.rd_clk(rd_clk),                // input wire rd_clk
-	.rd_en(fifo_rd_en),             // input wire rd_en
-	.dout(fifo_dout),                    // output wire [31 : 0] dout
-	.empty(empty),                  // output wire empty
-	.rd_data_count(fifo_rd_cnt),  // output wire [9 : 0] rd_data_count
+	.rd_clk(lcd_if_clk),                // input wire rd_clk
+	.rd_en(fifo_rd_en),             	// input wire rd_en
+	.dout(fifo_rd_dout),                // output wire [31 : 0] dout
+	.empty(fifo_empty),                 // output wire empty
+	.rd_data_count(fifo_rd_cnt),  		// output wire [9 : 0] rd_data_count
 );
 
 //-------------------------------------//
 //	lcd driver interface               //
 //-------------------------------------//
-wire 						lcd_request;		//lcd 读请求
-wire 						lcd_framesync;		//lcd 帧同步
 wire 		[23:0]			lcd_data;
 
-assign lcd_data = fifo_dout[ 23 : 0];
+assign lcd_data = (fifo_rd_en)?fifo_dout[ 23 : 0]:24'd0;
 
-lcd_driver u_lcd_driver
-(
+lcd_driver u_lcd_driver(
 	//global clock
 	.clk			(lcd_if_clk),		
 	.rst_n			(rst_n), 
@@ -151,7 +154,7 @@ lcd_driver u_lcd_driver
 	//user interface
 	.lcd_rd_en		(fifo_rd_en),		//输入，lcd 读使能
 	.lcd_request	(lcd_data_requst),	//输出，lcd 读请求
-	.lcd_framesync	(lcd_framesync),	//输出，lcd 帧同步
+	.lcd_framesync	(lcd_framesync),	//输出，lcd 帧同步,,,应改为输入，清空计数
 	.lcd_data		(lcd_data),	
 	.lcd_xpos		(),	
 	.lcd_ypos		()
