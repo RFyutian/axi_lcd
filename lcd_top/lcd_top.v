@@ -81,7 +81,7 @@ wire 		[9 : 0]			wr_data_count;
 wire 						lcd_data_requst;	//lcd 读请求
 wire 						lcd_framesync;		//lcd 帧同步
 
-fifo_ctl u_fifo_ctl#(
+fifo_ctl_top u_fifo_ctl_top#(
 	.FIFO_DEPTH(1024),
 	.FIFO_ALMOSTFULL_DEPTH(768),
 	.FIFO_ALMOSTEMPTY_DEPTH(256)
@@ -154,7 +154,7 @@ lcd_driver u_lcd_driver(
 	//user interface
 	.lcd_rd_en		(fifo_rd_en),		//输入，lcd 读使能
 	.lcd_request	(lcd_data_requst),	//输出，lcd 读请求
-	.lcd_framesync	(lcd_framesync),	//输出，lcd 帧同步,,,应改为输入，清空计数
+	.lcd_framesync	(lcd_framesync),	//输入，lcd 帧同步,,,应改为输入，清空计数
 	.lcd_data		(lcd_data),	
 	.lcd_xpos		(),	
 	.lcd_ypos		()
