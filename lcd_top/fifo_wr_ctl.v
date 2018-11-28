@@ -1,5 +1,6 @@
 module fifo_wr_ctl #(
-	parameter integer FIFO_ALMOSTFULL_DEPTH
+	parameter integer FIFO_ALMOSTFULL_DEPTH,
+	parameter integer FIFO_ALMOSTEMPTY_DEPTH
 )(
 	//system
 	rst_n,						//input
@@ -32,17 +33,41 @@ module fifo_wr_ctl #(
 //--------------------------------------------------------------------------//
 	//signal
 	reg 					wr_ready;
+	reg 					axis_data_requst;
 //--------------------------------------------------------------------------//
 	
-assign lcd_framesync = axis_data_requst;
-
-	always @(posedge fifo_wr_clk)begin
-		if(!rst_n)begin
-		
+assign lcd_framesync = axis_data_sync;						//使用axi stream 同步信号进行数据同步
+assign fifo_wr_en = ((axis_data_requst)&&(wr_ready))?1:0;	//fifo内部数据小于最小存储深度且写准备就绪时，写使能
+	
+always @(posedge fifo_wr_clk)begin
+	if(!rst_n)begin
+		wr_ready <= 0;
 	end
 	else 
 	begin
+		if((fifo_wr_cnt>FIFO_ALMOSTEMPTY_DEPTH)&&(fifo_wr_cnt<FIFO_ALMOSTFULL_DEPTH))begin
+			wr_ready <= 1;
+		end
+		else
+		begin
+			wr_ready <= 0;
+		end
+	end
+end
 
+always @(posedge fifo_wr_clk)begin
+	if(!rst_n)begin
+		axis_data_requst <= 0;
+	end
+	else
+	begin
+		if(fifo_wr_cnt<FIFO_ALMOSTEMPTY_DEPTH)begin	//fifo内数据若小于最小存储深度，申请读请求
+			axis_data_requst <= 1;
+		end
+		else
+		begin
+			axis_data_requst <= 0;
+		end
 	end
 end
 	
