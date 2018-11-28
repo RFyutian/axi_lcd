@@ -24,14 +24,30 @@ module fifo_rd_ctl#(
 	input 					lcd_data_requst;
 //--------------------------------------------------------------------------//
 
-	wire rd_ready;
+	//wire rd_ready;
+	reg rd_ready;
 
-assign rd_ready = ((fifo_rd_cnt>FIFO_ALMOSTEMPTY_DEPTH)&&(!fifo_empty))?1:0;	//若fifo非空，且数据量大于最小数据深度时，可读，高有效
-assign fifo_rd_en = (rd_ready&&lcd_data_requst&&rst_n)?1:0;			//若读就绪且有数据请求且未复位时，读使能输出为1
+//assign rd_ready = ((fifo_rd_cnt>FIFO_ALMOSTEMPTY_DEPTH)&&(!fifo_empty))?1:0;	//若fifo非空，且数据量大于最小数据深度时，可读，高有效
 
-	always@(posedge fifo_rd_clk)begin
-		
+
+always@(posedge fifo_rd_clk)begin
+	if(!rst_n)begin
+		rd_ready <= 0;
 	end
+	else
+	begin
+		if((fifo_rd_cnt>FIFO_ALMOSTEMPTY_DEPTH)&&(!fifo_empty))begin
+			rd_ready <= 1;			//若fifo非空，且数据量大于最小数据深度时，可读，高有效
+		end
+		else
+		begin
+			rd_ready <= 0;
+		end
+	end
+end
+	
+assign fifo_rd_en = (rd_ready&&lcd_data_requst&&rst_n)?1:0;			//若读就绪且有数据请求且未复位时，读使能输出为1
+	
 //状态机方式实现：
 /*
 parameter IDLE = 0;
