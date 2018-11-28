@@ -1,2 +1,2 @@
 # axi_lcd
-zynq vdma &amp; usrfifo &amp; lcd driver verilog
+zynq vdma &amp; fifo ip&amp; lcd driver verilog
