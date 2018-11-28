@@ -18,7 +18,7 @@ module lcd_top
 	input				rst_n,     		//sync reset
 	input				clk,			//system clock
 //	input 				axis_if_clk,	//140M时钟输入
-	input 				lcd_if_clk,		//9M时钟输入
+	input 				lcd_pixel_clk,		//9M时钟输入
 	//axi stream interface 
 	input 				axis_aresetn,		// input wire s00_axis_aresetn
 	input 				axis_aclk,        	// input wire s00_axis_aclk
@@ -30,8 +30,6 @@ module lcd_top
 	input 				axis_tstrb,      	// input wire [3 : 0] axis_tstrb
 	//lcd interface
 	output				lcd_dclk,   		//lcd pixel clock
-	output				lcd_blank,			//lcd blank
-	output				lcd_sync,			//lcd sync
 	output				lcd_hs,	    		//lcd horizontal sync
 	output				lcd_vs,	    		//lcd vertical sync
 	output				lcd_en,				//lcd display enable
@@ -40,13 +38,16 @@ module lcd_top
 	  
 	//signal
 //--------------------------------------------------------------------------//	
-	wire 				lcd_if_clk;
+	wire 				lcd_pixel_clk;
 
 	wire 				axis_data_en;			//output axi stream 数据输出使能
 	wire 				axis_data_sync;        	//output axi stream 数据同步
 	wire 				axis_data_requst;      	//input axi stream  数据请求
 //--------------------------------------------------------------------------//	
-	
+	parameter 			FIFO_DEPTH = 1024;
+	parameter			FIFO_ALMOSTFULL_DEPTH = 1000;
+	parameter			FIFO_ALMOSTEMPTY_DEPTH = 64;
+//--------------------------------------------------------------------------//	
 //-------------------------------------//
 //	lcd driver interface               //
 //-------------------------------------//
@@ -82,9 +83,9 @@ wire 						lcd_data_requst;	//lcd 读请求
 wire 						lcd_framesync;		//lcd 帧同步
 
 fifo_ctl_top #(
-	.FIFO_DEPTH(1024),
-	.FIFO_ALMOSTFULL_DEPTH(768),
-	.FIFO_ALMOSTEMPTY_DEPTH(256)
+	.FIFO_DEPTH(FIFO_DEPTH),
+	.FIFO_ALMOSTFULL_DEPTH(FIFO_ALMOSTFULL_DEPTH),
+	.FIFO_ALMOSTEMPTY_DEPTH(FIFO_ALMOSTEMPTY_DEPTH)
 )u_fifo_ctl_top(
 	//system
 //	.clk(clk),								//input		系统时钟	140M
@@ -95,7 +96,7 @@ fifo_ctl_top #(
 	.axis_data_requst(axis_data_requst),	//outpt axi stream  数据请求
 	//fifo port
 		//read
-	.fifo_rd_clk(lcd_if_clk),				//input		fifo读时钟
+	.fifo_rd_clk(lcd_pixel_clk),				//input		fifo读时钟
 	.fifo_rd_en(fifo_rd_en),					//output	fifo读使能
 	.fifo_empty(fifo_empty),					//input		fifo空指示	
 	.fifo_rd_cnt(fifo_rd_cnt),				//input 	fifo读计数器
@@ -127,7 +128,7 @@ fifo_gen u_fifo_gen (
 	.full(fifo_full),                   // output wire full
 	.wr_data_count(fifo_wr_cnt), 		// output wire [9 : 0] wr_data_count
 	//read
-	.rd_clk(lcd_if_clk),                // input wire rd_clk
+	.rd_clk(lcd_pixel_clk),                // input wire rd_clk
 	.rd_en(fifo_rd_en),             	// input wire rd_en
 	.dout(fifo_rd_dout),                // output wire [31 : 0] dout
 	.empty(fifo_empty),                 // output wire empty
@@ -143,7 +144,7 @@ assign lcd_data = (fifo_rd_en)?fifo_rd_dout[ 23 : 0]:24'd0;
 
 lcd_driver u_lcd_driver(
 	//global clock
-	.clk			(lcd_if_clk),		
+	.clk			(lcd_pixel_clk),		
 	.rst_n			(rst_n), 
 	 //lcd interface
 	.lcd_dclk		(lcd_dclk),
