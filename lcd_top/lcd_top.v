@@ -64,7 +64,7 @@ axis_if u_axis_if(
 	//.axis_data_out(axis_data_out),
 	.axis_data_en(axis_data_en),			//output axi stream 数据输出使能
 	.axis_data_sync(axis_data_sync),		//output axi stream 数据同步
-	.axis_data_requst(axis_data_requst),	//input axi stream  数据请求
+	.axis_data_requst(axis_data_requst)		//input axi stream  数据请求
 );
 
 //-------------------------------------//
@@ -76,37 +76,37 @@ wire 		[9 : 0]			fifo_rd_cnt;
 	
 wire						fifo_wr_en;
 wire 						fifo_full;
-wire 		[9 : 0]			wr_data_count;
+wire 		[9 : 0]			fifo_wr_cnt;
 	
 wire 						lcd_data_requst;	//lcd 读请求
 wire 						lcd_framesync;		//lcd 帧同步
 
-fifo_ctl_top u_fifo_ctl_top#(
+fifo_ctl_top #(
 	.FIFO_DEPTH(1024),
 	.FIFO_ALMOSTFULL_DEPTH(768),
 	.FIFO_ALMOSTEMPTY_DEPTH(256)
-)(
+)u_fifo_ctl_top(
 	//system
-	clk(clk),								//input		系统时钟	140M
-	rst_n(rst_n),							//input		系统复位
+//	.clk(clk),								//input		系统时钟	140M
+	.rst_n(rst_n),							//input		系统复位
 	//axi stream interface 
 	.axis_data_en(axis_data_en),			//output axi stream 数据输出使能
 	.axis_data_sync(axis_data_sync),  		//output axi stream 数据同步
-	.axis_data_requst(axis_data_requst),	//input axi stream  数据请求
+	.axis_data_requst(axis_data_requst),	//outpt axi stream  数据请求
 	//fifo port
 		//read
-	fifo_rd_clk(lcd_if_clk),				//input		fifo读时钟
-	fifo_rd_en(fifo_rd_en),					//output	fifo读使能
-	fifo_empty(fifo_empty),					//input		fifo空指示	
-	fifo_rd_cnt(fifo_rd_cnt),				//input 	fifo读计数器
+	.fifo_rd_clk(lcd_if_clk),				//input		fifo读时钟
+	.fifo_rd_en(fifo_rd_en),					//output	fifo读使能
+	.fifo_empty(fifo_empty),					//input		fifo空指示	
+	.fifo_rd_cnt(fifo_rd_cnt),				//input 	fifo读计数器
 		//write
-	fifo_wr_clk(axis_aclk),					//input		fifo写时钟
-	fifo_wr_en(fifo_wr_en),					//output	fifo写使能
-	fifo_full(fifo_full),					//input		fifo满指示
-	fifo_wr_cnt(wr_data_count),				//input		fifo写计数器
+	.fifo_wr_clk(axis_aclk),					//input		fifo写时钟
+	.fifo_wr_en(fifo_wr_en),					//output	fifo写使能
+	.fifo_full(fifo_full),					//input		fifo满指示
+	.fifo_wr_cnt(fifo_wr_cnt),				//input		fifo写计数器
 	//lcd driver port
-	lcd_framesync(lcd_framesync),			//output 	帧同步输出
-	lcd_data_requst(lcd_data_requst)		//input		数据请求输入
+	.lcd_framesync(lcd_framesync),			//output 	帧同步输出
+	.lcd_data_requst(lcd_data_requst)		//input		数据请求输入
 );
 
 //-------------------------------------//
@@ -125,13 +125,13 @@ fifo_gen u_fifo_gen (
 	.wr_en(fifo_wr_en),                 // input wire wr_en
 	.din(fifo_wr_din),                  // input wire [31 : 0] din
 	.full(fifo_full),                   // output wire full
-	.wr_data_count(wr_data_count)  		// output wire [9 : 0] wr_data_count
+	.wr_data_count(fifo_wr_cnt), 		// output wire [9 : 0] wr_data_count
 	//read
 	.rd_clk(lcd_if_clk),                // input wire rd_clk
 	.rd_en(fifo_rd_en),             	// input wire rd_en
 	.dout(fifo_rd_dout),                // output wire [31 : 0] dout
 	.empty(fifo_empty),                 // output wire empty
-	.rd_data_count(fifo_rd_cnt),  		// output wire [9 : 0] rd_data_count
+	.rd_data_count(fifo_rd_cnt)  		// output wire [9 : 0] rd_data_count
 );
 
 //-------------------------------------//
@@ -139,7 +139,7 @@ fifo_gen u_fifo_gen (
 //-------------------------------------//
 wire 		[23:0]			lcd_data;
 
-assign lcd_data = (fifo_rd_en)?fifo_dout[ 23 : 0]:24'd0;
+assign lcd_data = (fifo_rd_en)?fifo_rd_dout[ 23 : 0]:24'd0;
 
 lcd_driver u_lcd_driver(
 	//global clock
