@@ -1,13 +1,13 @@
 module fifo_ctl_top #(
-	parameter integer FIFO_DEPTH,
-	parameter integer FIFO_ALMOSTFULL_DEPTH,
-	parameter integer FIFO_ALMOSTEMPTY_DEPTH
+	parameter integer FIFO_DEPTH = 32'd1024,
+	parameter integer FIFO_ALMOSTFULL_DEPTH = 32'd768,
+	parameter integer FIFO_ALMOSTEMPTY_DEPTH = 32'd128
 )(
 	//system
 	rst_n,							//input		系统复位
 	//axi stream interface 
-	axis_data_en,					//output axi stream 数据输出使能
-	axis_data_sync,  				//output axi stream 数据同步
+	axis_data_en,					//input axi stream 数据输出使能
+	axis_data_sync,  				//input axi stream 数据同步
 	axis_data_requst,				//output axi stream  数据请求
 	//fifo port
 		//read
@@ -30,9 +30,9 @@ module fifo_ctl_top #(
 	//system
 	input 					rst_n;
 	//axi stream
-	output 					axis_data_en;
-	output 					axis_data_sync;
-	input  					axis_data_requst;
+	input 					axis_data_en;
+	input 					axis_data_sync;
+	output  				axis_data_requst;
 	//fifo
 		//read
 	input 					fifo_rd_clk;
@@ -49,10 +49,10 @@ module fifo_ctl_top #(
 	input					lcd_data_requst;
 //--------------------------------------------------------------------------//
 
-fifo_wr_ctl u_fifo_wr_ctl#(
-	.FIFO_ALMOSTFULL_DEPTH(FIFO_ALMOSTFULL_DEPTH)，
+fifo_wr_ctl #(
+	.FIFO_ALMOSTFULL_DEPTH(FIFO_ALMOSTFULL_DEPTH),
 	.FIFO_ALMOSTEMPTY_DEPTH(FIFO_ALMOSTEMPTY_DEPTH)
-)(
+)u_fifo_wr_ctl(
 	//system
 	.rst_n				(rst_n),
 	//axi stream
@@ -68,9 +68,9 @@ fifo_wr_ctl u_fifo_wr_ctl#(
 	.lcd_framesync		(lcd_framesync)
 );	
 
-fifo_rd_ctl u_fifo_rd_ctl#(
+fifo_rd_ctl #(
 	.FIFO_ALMOSTEMPTY_DEPTH(FIFO_ALMOSTEMPTY_DEPTH)
-)(
+)u_fifo_rd_ctl(
 	//system
 	.rst_n				(rst_n),
 	//fifo read
