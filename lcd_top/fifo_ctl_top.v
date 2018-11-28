@@ -8,7 +8,7 @@ module fifo_ctl_top #(
 	//axi stream interface 
 	axis_data_en,					//output axi stream 数据输出使能
 	axis_data_sync,  				//output axi stream 数据同步
-	axis_data_requst,				//input axi stream  数据请求
+	axis_data_requst,				//output axi stream  数据请求
 	//fifo port
 		//read
 	fifo_rd_clk,					//input		fifo读时钟
@@ -22,7 +22,7 @@ module fifo_ctl_top #(
 	fifo_wr_cnt,					//input		fifo写计数器
 	//lcd driver port
 	lcd_framesync,					//output 	帧同步输出
-	lcd_data_requst					//input		数据请求输入
+	lcd_data_requst					//input	数据请求输入
 );
 
 //--------------------------------------------------------------------------//
@@ -50,7 +50,8 @@ module fifo_ctl_top #(
 //--------------------------------------------------------------------------//
 
 fifo_wr_ctl u_fifo_wr_ctl#(
-	.FIFO_ALMOSTFULL_DEPTH(FIFO_ALMOSTFULL_DEPTH)
+	.FIFO_ALMOSTFULL_DEPTH(FIFO_ALMOSTFULL_DEPTH)，
+	.FIFO_ALMOSTEMPTY_DEPTH(FIFO_ALMOSTEMPTY_DEPTH)
 )(
 	//system
 	.rst_n				(rst_n),
