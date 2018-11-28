@@ -81,7 +81,6 @@ fifo_rd_ctl u_fifo_rd_ctl#(
 	.lcd_data_requst	(lcd_data_requst)
 );
 
-
 endmodule
 
 
