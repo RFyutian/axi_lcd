@@ -22,6 +22,7 @@ module axis_if(
 	output 					axis_tready;
 	input 					axis_tuser;
 	input 					axis_tlast; 
+	input					axis_tstrb;
 	
 	//内部信号
 	output 					axis_data_en;
