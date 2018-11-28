@@ -1,5 +1,5 @@
 module fifo_rd_ctl#(
-	parameter integer FIFO_ALMOSTEMPTY_DEPTH
+	parameter integer FIFO_ALMOSTEMPTY_DEPTH = 32'd128
 )(
 	//system
 	rst_n,
