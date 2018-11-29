@@ -20,17 +20,15 @@ module lcd_driver
 
 	//lcd interface
 	output			lcd_dclk,   	//lcd pixel clock
-//	output			lcd_blank,		//lcd blank
-//	output			lcd_sync,		//lcd sync
 	output			lcd_hs,	    	//lcd horizontal sync
 	output			lcd_vs,	    	//lcd vertical sync
-	output			lcd_en,			//lcd display enable
+	output			lcd_de,			//lcd display enable
 	output	[23:0]	lcd_rgb,		//lcd display data
 
 	//user interface
-	input			lcd_rd_en,
-	output			lcd_request,	//lcd data request
-	output			lcd_framesync,	//lcd frame sync
+	input			lcd_rd_en,		//读使能
+	output			lcd_request,	//lcd 数据请求
+	input			lcd_framesync,	//lcd frame sync
 	output	[10:0]	lcd_xpos,		//lcd horizontal coordinate
 	output	[10:0]	lcd_ypos,		//lcd vertical coordinate
 	input	[23:0]	lcd_data		//lcd data
@@ -45,7 +43,7 @@ module lcd_driver
 reg [10:0] hcnt; 
 always @ (posedge clk or negedge rst_n)
 begin
-	if (!rst_n)
+	if ((!rst_n)&&(lcd_framesync))
 		hcnt <= 11'd0;
 	else
 		begin
@@ -62,7 +60,7 @@ assign	lcd_hs = (hcnt <= `H_SYNC - 1'b1) ? 1'b0 : 1'b1;
 reg [10:0] vcnt;
 always@(posedge clk or negedge rst_n)
 begin
-	if (!rst_n)
+	if ((!rst_n)&&(lcd_framesync))
 		vcnt <= 11'b0;
 	else if(hcnt == `H_TOTAL - 1'b1)		//line over
 		begin
@@ -77,18 +75,19 @@ assign	lcd_vs = (vcnt <= `V_SYNC - 1'b1) ? 1'b0 : 1'b1;
 //------------------------------------------
 //LCELL	LCELL(.in(clk),.out(lcd_dclk));
 assign	lcd_dclk = ~clk;
-//assign	lcd_blank = lcd_en;//lcd_hs & lcd_vs;		
+//assign	lcd_blank = lcd_de;//lcd_hs & lcd_vs;		
 //assign	lcd_sync = 1'b0;
-assign	lcd_en		=	(hcnt >= `H_SYNC + `H_BACK  && hcnt < `H_SYNC + `H_BACK + `H_DISP) &&
+assign	lcd_de		=	(hcnt >= `H_SYNC + `H_BACK  && hcnt < `H_SYNC + `H_BACK + `H_DISP) &&
 						(vcnt >= `V_SYNC + `V_BACK  && vcnt < `V_SYNC + `V_BACK + `V_DISP) 
 						? 1'b1 : 1'b0;
-assign	lcd_rgb 	=  (lcd_en && lcd_request) ? lcd_data : 24'd0;
-assign	lcd_framesync = lcd_vs;
+//assign	lcd_rgb 	=  (lcd_de && lcd_request) ? lcd_data : 24'd0;
+assign	lcd_rgb 	=  (lcd_de) ? lcd_data : 24'd0;
+//assign	lcd_framesync = lcd_vs;
 
 
 //------------------------------------------
-//ahead a clock
-assign	lcd_request	=	(hcnt >= `H_SYNC + `H_BACK  - 1'd1 && hcnt < `H_SYNC + `H_BACK + `H_DISP - 1'd1) &&
+//ahead 1 clock
+assign	lcd_request	=	(hcnt >= `H_SYNC + `H_BACK  - 2'd1 && hcnt < `H_SYNC + `H_BACK + `H_DISP - 2'd1) &&
 						(vcnt >= `V_SYNC + `V_BACK && vcnt < `V_SYNC + `V_BACK + `V_DISP) 
 						? 1'b1 : 1'b0;
 assign	lcd_xpos	= 	lcd_request ? (hcnt - (`H_SYNC + `H_BACK  - 1'b1)) : 11'd0;
