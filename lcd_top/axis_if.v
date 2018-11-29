@@ -29,41 +29,16 @@ module axis_if(
     output 					axis_data_sync;	
     input					axis_data_requst;
 
-		//signal
+
 //--------------------------------------------------------------------------//	
+//signal
 	wire 					axis_data_en;
 	wire 					axis_data_sync;
 	
 //--------------------------------------------------------------------------//
-
-//always@(posedge axis_aclk)begin
-//	if(!axis_aresetn)begin
-//		axis_tready <= 0;
-//	end
-//	else
-//	begin
-//		
-//	end
-//end
 assign axis_data_en = axis_tvalid;
 assign axis_tready = axis_data_requst;	
 assign axis_data_sync = axis_tuser;
-
-//always@(posedge axis_aclk)begin
-//	if(!axis_aresetn)begin
-//		axis_data_sync <= 0;
-//	end
-//	else
-//	begin
-//		if(axis_tuser)begin
-//			axis_data_sync <= 1;
-//		end
-//		else
-//		begin
-//			axis_data_sync <= 0;
-//		end
-//	end
-//end
 	
 endmodule
 
