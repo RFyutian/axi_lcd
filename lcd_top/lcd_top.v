@@ -1,23 +1,18 @@
 /*-------------------------------------------------------------------------
-This confidential and proprietary software may be only used as authorized
-by a licensing agreement from amfpga.
-(C) COPYRIGHT 2013.www.amfpga.com ALL RIGHTS RESERVED
-Filename			:		sdram_ov7670_vga.v
-Author				:		Amfpga
-Data				:		2013-02-1
+===========================================================================
+Filename			:		lcd_top.v
+Author				:		bh1whq
+Data				:		2018-11-29
 Version				:		1.0
-Description			:		sdram vga controller with ov7670 display.
+Description			:		lcd controller with fifo and axi stream interface.
 Modification History	:
 Data			By			Version			Change Description
 ===========================================================================
-13/02/1
 --------------------------------------------------------------------------*/
-module lcd_top
-(  	
+module lcd_top(  	
 	//global clock
-	input				rst_n,     		//sync reset
-	input				clk,			//system clock
-//	input 				axis_if_clk,	//140M时钟输入
+	input				rst_n,     			//sync reset
+	input				clk,				//system clock
 	input 				lcd_pixel_clk,		//9M时钟输入
 	//axi stream interface 
 	input 				axis_aresetn,		// input wire s00_axis_aresetn
@@ -32,12 +27,14 @@ module lcd_top
 	output				lcd_dclk,   		//lcd pixel clock
 	output				lcd_hs,	    		//lcd horizontal sync
 	output				lcd_vs,	    		//lcd vertical sync
-	output				lcd_en,				//lcd display enable
-	output	[23:0]		lcd_rgb				//lcd display data
+	output				lcd_de,				//lcd display enable
+	output	[23:0]		lcd_rgb,			//lcd display data
+	output	[10:0]		lcd_xpos,			//lcd horizontal coordinate
+	output	[10:0]		lcd_ypos			//lcd vertical coordinate
 );
 	  
-	//signal
 //--------------------------------------------------------------------------//	
+	//signal
 	wire 				lcd_pixel_clk;
 
 	wire 				axis_data_en;			//output axi stream 数据输出使能
@@ -55,14 +52,12 @@ axis_if u_axis_if(
 	//axi stream interface
 	.axis_aresetn(axis_aresetn),			// input wire s00_axis_aresetn
 	.axis_aclk(axis_aclk),        			// input wire s00_axis_aclk
-	//.axis_tdata(axis_tdata),     			// input wire [31 : 0] write data
 	.axis_tvalid(axis_tvalid),    			// input wire s00_axis_tvalid
 	.axis_tready(axis_tready),    			// output wire read data ready
 	.axis_tuser(axis_tuser),				// input wire frame sync
 	.axis_tlast(axis_tlast),      			// input wire s00_axis_tlast
 	.axis_tstrb(axis_tstrb),      			// input wire [3 : 0] s00_axis_tstrb
 	//内部信号
-	//.axis_data_out(axis_data_out),
 	.axis_data_en(axis_data_en),			//output axi stream 数据输出使能
 	.axis_data_sync(axis_data_sync),		//output axi stream 数据同步
 	.axis_data_requst(axis_data_requst)		//input axi stream  数据请求
@@ -88,11 +83,9 @@ fifo_ctl_top #(
 	.FIFO_ALMOSTEMPTY_DEPTH(FIFO_ALMOSTEMPTY_DEPTH)
 )u_fifo_ctl_top(
 	//system
-//	.clk(clk),								//input		系统时钟	140M
 	.rst_n(rst_n),							//input		系统复位
 	//axi stream interface 
 	.axis_data_en(axis_data_en),			//output axi stream 数据输出使能
-	.axis_data_sync(axis_data_sync),  		//output axi stream 数据同步
 	.axis_data_requst(axis_data_requst),	//outpt axi stream  数据请求
 	//fifo port
 		//read
@@ -106,8 +99,7 @@ fifo_ctl_top #(
 	.fifo_full(fifo_full),					//input		fifo满指示
 	.fifo_wr_cnt(fifo_wr_cnt),				//input		fifo写计数器
 	//lcd driver port
-	.lcd_framesync(lcd_framesync),			//output 	帧同步输出
-	.lcd_data_requst(lcd_data_requst)		//input		数据请求输入
+	.rd_data_requst(lcd_data_requst)		//input		数据请求输入
 );
 
 //-------------------------------------//
@@ -128,7 +120,7 @@ fifo_gen u_fifo_gen (
 	.full(fifo_full),                   // output wire full
 	.wr_data_count(fifo_wr_cnt), 		// output wire [9 : 0] wr_data_count
 	//read
-	.rd_clk(lcd_pixel_clk),                // input wire rd_clk
+	.rd_clk(lcd_pixel_clk),             // input wire rd_clk
 	.rd_en(fifo_rd_en),             	// input wire rd_en
 	.dout(fifo_rd_dout),                // output wire [31 : 0] dout
 	.empty(fifo_empty),                 // output wire empty
@@ -140,7 +132,10 @@ fifo_gen u_fifo_gen (
 //-------------------------------------//
 wire 		[23:0]			lcd_data;
 
-assign lcd_data = (fifo_rd_en)?fifo_rd_dout[ 23 : 0]:24'd0;
+assign lcd_data = (fifo_rd_en) ? fifo_rd_dout[ 23 : 0] : 24'd0;
+
+//暂时不引入帧同步，帧同步需要master发出，并且在该模块中有跨时钟域问题，需要注意
+assign						lcd_framesync = 0;
 
 lcd_driver u_lcd_driver(
 	//global clock
@@ -150,15 +145,15 @@ lcd_driver u_lcd_driver(
 	.lcd_dclk		(lcd_dclk),
 	.lcd_hs			(lcd_hs),		
 	.lcd_vs			(lcd_vs),
-	.lcd_en			(lcd_en),		
+	.lcd_de			(lcd_de),		
 	.lcd_rgb		(lcd_rgb),
 	//user interface
 	.lcd_rd_en		(fifo_rd_en),		//输入，lcd 读使能
 	.lcd_request	(lcd_data_requst),	//输出，lcd 读请求
-	.lcd_framesync	(lcd_framesync),	//输入，lcd 帧同步,,,应改为输入，清空计数
+	.lcd_framesync	(lcd_framesync),	//输入，lcd 帧同步,应改为输入，清空计数
 	.lcd_data		(lcd_data),	
-	.lcd_xpos		(),	
-	.lcd_ypos		()
+	.lcd_xpos		(lcd_xpos),	
+	.lcd_ypos		(lcd_ypos)
 );
 
 endmodule
