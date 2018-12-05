@@ -28,7 +28,7 @@ module lcd_driver
 	//user interface
 	input			lcd_rd_en,		//读使能
 	output			lcd_request,	//lcd 数据请求
-	input			lcd_framesync,	//lcd frame sync
+	output			lcd_framesync,	//lcd frame sync
 	output	[10:0]	lcd_xpos,		//lcd horizontal coordinate
 	output	[10:0]	lcd_ypos,		//lcd vertical coordinate
 	input	[23:0]	lcd_data		//lcd data
@@ -43,7 +43,8 @@ module lcd_driver
 reg [10:0] hcnt; 
 always @ (posedge clk or negedge rst_n)
 begin
-	if ((!rst_n)&&(lcd_framesync))
+	//if ((!rst_n)&&(lcd_framesync))
+	if (!rst_n)
 		hcnt <= 11'd0;
 	else
 		begin
@@ -60,7 +61,8 @@ assign	lcd_hs = (hcnt <= `H_SYNC - 1'b1) ? 1'b0 : 1'b1;
 reg [10:0] vcnt;
 always@(posedge clk or negedge rst_n)
 begin
-	if ((!rst_n)&&(lcd_framesync))
+	//if ((!rst_n)&&(lcd_framesync))
+	if (!rst_n)
 		vcnt <= 11'b0;
 	else if(hcnt == `H_TOTAL - 1'b1)		//line over
 		begin
@@ -82,7 +84,24 @@ assign	lcd_de		=	(hcnt >= `H_SYNC + `H_BACK  && hcnt < `H_SYNC + `H_BACK + `H_DI
 						? 1'b1 : 1'b0;
 //assign	lcd_rgb 	=  (lcd_de && lcd_request) ? lcd_data : 24'd0;
 assign	lcd_rgb 	=  (lcd_de) ? lcd_data : 24'd0;
-//assign	lcd_framesync = lcd_vs;
+
+//抓取同步信号
+reg lcd_vs_edge1;
+reg lcd_vs_edge2;
+always @(posedge clk)begin
+	if(!rst_n)
+	begin
+		lcd_vs_edge1 <= 0;
+		lcd_vs_edge2 <= 0;
+	end
+	else 
+	begin 
+		lcd_vs_edge1 <= lcd_vs;
+		lcd_vs_edge2 <= lcd_vs_edge1;
+	end
+end
+
+assign	lcd_framesync = (lcd_vs&&(!lcd_vs_edge2))? 1 :0 ;	//取出场同步信号上升沿作为同步,2个时钟沿
 
 
 //------------------------------------------
