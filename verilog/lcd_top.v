@@ -20,15 +20,17 @@ module lcd_top(
 	input 	[31:0] 		axis_tdata,     	// input wire [31 : 0] write data
 	input 				axis_tvalid,    	// 数据有效，从机为输入
 	output				axis_tready,    	// 数据输入准备，从机为输出
-	input 				axis_tuser,			// input wire frame sync
+	input 	[0 : 0]		axis_tuser,			// input wire frame sync
 	input 				axis_tlast,      	// input wire axis_tlast
 	input 				axis_tstrb,      	// input wire [3 : 0] axis_tstrb
+	input	[3 : 0]		axis_tkeep,
 	//lcd interface
 	output				lcd_dclk,   		//lcd pixel clock
 	output				lcd_hs,	    		//lcd horizontal sync
 	output				lcd_vs,	    		//lcd vertical sync
 	output				lcd_de,				//lcd display enable
 	output	[23:0]		lcd_rgb,			//lcd display data
+	output 				lcd_framesync,		//lcd 同步信号
 	output	[10:0]		lcd_xpos,			//lcd horizontal coordinate
 	output	[10:0]		lcd_ypos			//lcd vertical coordinate
 );
@@ -54,9 +56,9 @@ axis_if u_axis_if(
 	.axis_aclk(axis_aclk),        			// input wire s00_axis_aclk
 	.axis_tvalid(axis_tvalid),    			// input wire s00_axis_tvalid
 	.axis_tready(axis_tready),    			// output wire read data ready
-	.axis_tuser(axis_tuser),				// input wire frame sync
-	.axis_tlast(axis_tlast),      			// input wire s00_axis_tlast
-	.axis_tstrb(axis_tstrb),      			// input wire [3 : 0] s00_axis_tstrb
+	.axis_tuser(),							// input wire frame sync
+	.axis_tlast(),      					// input wire s00_axis_tlast
+	.axis_tstrb(),      					// input wire [3 : 0] s00_axis_tstrb
 	//内部信号
 	.axis_data_en(axis_data_en),			//output axi stream 数据输出使能
 	.axis_data_sync(axis_data_sync),		//output axi stream 数据同步
@@ -66,16 +68,16 @@ axis_if u_axis_if(
 //-------------------------------------//
 //	fifo control                	   //
 //-------------------------------------//
-wire 						fifo_rd_en;
-wire 						fifo_empty;
-wire 		[9 : 0]			fifo_rd_cnt;
-	
-wire						fifo_wr_en;
-wire 						fifo_full;
-wire 		[9 : 0]			fifo_wr_cnt;
-	
-wire 						lcd_data_requst;	//lcd 读请求
-wire 						lcd_framesync;		//lcd 帧同步
+	wire 						fifo_rd_en;
+	wire 						fifo_empty;
+	wire 		[9 : 0]			fifo_rd_cnt;
+		
+	wire						fifo_wr_en;
+	wire 						fifo_full;
+	wire 		[9 : 0]			fifo_wr_cnt;
+		
+	wire 						lcd_data_requst;	//lcd 读请求
+	wire 						lcd_framesync;		//lcd 帧同步
 
 fifo_ctl_top #(
 	.FIFO_DEPTH(FIFO_DEPTH),
@@ -83,19 +85,19 @@ fifo_ctl_top #(
 	.FIFO_ALMOSTEMPTY_DEPTH(FIFO_ALMOSTEMPTY_DEPTH)
 )u_fifo_ctl_top(
 	//system
-	.rst_n(rst_n),							//input		系统复位
+	.rst_n(rst_n||(!lcd_framesync)),		//input		系统复位
 	//axi stream interface 
 	.axis_data_en(axis_data_en),			//output axi stream 数据输出使能
 	.axis_data_requst(axis_data_requst),	//outpt axi stream  数据请求
 	//fifo port
 		//read
-	.fifo_rd_clk(lcd_pixel_clk),				//input		fifo读时钟
-	.fifo_rd_en(fifo_rd_en),					//output	fifo读使能
-	.fifo_empty(fifo_empty),					//input		fifo空指示	
+	.fifo_rd_clk(lcd_pixel_clk),			//input		fifo读时钟
+	.fifo_rd_en(fifo_rd_en),				//output	fifo读使能
+	.fifo_empty(fifo_empty),				//input		fifo空指示	
 	.fifo_rd_cnt(fifo_rd_cnt),				//input 	fifo读计数器
 		//write
-	.fifo_wr_clk(axis_aclk),					//input		fifo写时钟
-	.fifo_wr_en(fifo_wr_en),					//output	fifo写使能
+	.fifo_wr_clk(axis_aclk),				//input		fifo写时钟
+	.fifo_wr_en(fifo_wr_en),				//output	fifo写使能
 	.fifo_full(fifo_full),					//input		fifo满指示
 	.fifo_wr_cnt(fifo_wr_cnt),				//input		fifo写计数器
 	//lcd driver port
@@ -105,14 +107,14 @@ fifo_ctl_top #(
 //-------------------------------------//
 //	fifo                			   //
 //-------------------------------------//
-wire 		[31:0]			fifo_wr_din;
-wire 		[31:0]			fifo_rd_dout;
+	wire 		[31:0]			fifo_wr_din;
+	wire 		[31:0]			fifo_rd_dout;
 
 assign fifo_wr_din = (fifo_wr_en)?axis_tdata:32'd0;
 
-fifo_gen u_fifo_gen (
+lcd_rdfifo u_lcd_rdfifo(
 	//system
-	.rst(!rst_n),                      	// input wire rst
+	.rst((!rst_n)||(lcd_framesync)),      // input wire rst
 	//write
 	.wr_clk(axis_aclk),                	// input wire wr_clk
 	.wr_en(fifo_wr_en),                 // input wire wr_en
@@ -135,7 +137,7 @@ wire 		[23:0]			lcd_data;
 assign lcd_data = (fifo_rd_en) ? fifo_rd_dout[ 23 : 0] : 24'd0;
 
 //暂时不引入帧同步，帧同步需要master发出，并且在该模块中有跨时钟域问题，需要注意
-assign						lcd_framesync = 0;
+//assign						lcd_framesync = 1;
 
 lcd_driver u_lcd_driver(
 	//global clock
